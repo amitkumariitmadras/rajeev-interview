@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Virtual Classroom</title>
+    <style>
+        #video-container {
+            display: flex;
+            flex-wrap: wrap;
+        }
+        video {
+            width: 300px;
+            height: 200px;
+            margin: 10px;
+        }
+        #whiteboard {
+            border: 1px solid black;
+            width: 500px;
+            height: 300px;
+            cursor: crosshair;
+        }
+    </style>
+</head>
+<body>
+
+<h1>Virtual Classroom</h1>
+
+<!-- Video Stream Container -->
+<div id="video-container">
+    <video id="localVideo" autoplay muted></video>
+</div>
+
+<!-- Whiteboard -->
+<canvas id="whiteboard"></canvas>
+
+<!-- File Upload -->
+<input type="file" id="fileInput" />
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/adapter.js/0.0.7/adapter.min.js"></script>
+<script>
+    const socket = new WebSocket('ws://' + window.location.host + '/ws/classroom/');
+
+    socket.onmessage = function(e) {
+        const data = JSON.parse(e.data);
+        console.log('Message from server: ', data);
+    };
+
+    // WebRTC Video setup
+    const localVideo = document.getElementById('localVideo');
+    let localStream;
+
+    navigator.mediaDevices.getUserMedia({ video: true, audio: true })
+        .then(stream => {
+            localVideo.srcObject = stream;
+            localStream = stream;
+            socket.send(JSON.stringify({
+                'message': 'New user joined with video stream'
+            }));
+        })
+        .catch(error => {
+            console.error('Error accessing media devices.', error);
+        });
+
+    // Whiteboard setup
+    const canvas = document.getElementById('whiteboard');
+    const ctx = canvas.getContext('2d');
+    let drawing = false;
+
+    canvas.addEventListener('mousedown', () => drawing = true);
+    canvas.addEventListener('mouseup', () => drawing = false);
+    canvas.addEventListener('mousemove', (event) => {
+        if (drawing) {
+            ctx.lineTo(event.clientX - canvas.offsetLeft, event.clientY - canvas.offsetTop);
+            ctx.stroke();
+        }
+    });
+
+    // File upload handling
+    const fileInput = document.getElementById('fileInput');
+    fileInput.addEventListener('change', (event) => {
+        const file = event.target.files[0];
+        if (file) {
+            console.log('Uploading file:', file);
+        }
+    });
+</script>
+
+</body>
+</html>
